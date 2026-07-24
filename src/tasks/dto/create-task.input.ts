@@ -30,8 +30,7 @@ export class CreateTaskInput {
 
   @Field(() => TaskStatus, {
     nullable: true,
-    defaultValue: TaskStatus.BACKLOG,
-    description: 'Estado inicial. Por defecto BACKLOG.',
+    description: 'Estado inicial. Si se omite, se asigna BACKLOG.',
   })
   @IsOptional()
   @IsEnum(TaskStatus)
@@ -39,8 +38,7 @@ export class CreateTaskInput {
 
   @Field(() => [String], {
     nullable: true,
-    defaultValue: [],
-    description: 'Etiquetas de clasificación.',
+    description: 'Etiquetas de clasificación. Si se omite, se inicializa vacío.',
   })
   @IsOptional()
   @IsArray()
