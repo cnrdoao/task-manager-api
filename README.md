@@ -1,98 +1,103 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Task Manager API
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+API GraphQL construida con NestJS para la gestión de tareas de proyectos de desarrollo de software.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+**Autor:** Andrés Conrado
 
-## Description
+## Temas aplicados
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+### Programación Orientada a Aspectos (AOP)
 
-## Project setup
+Las responsabilidades transversales están completamente separadas de la lógica de negocio:
 
-```bash
-$ npm install
-```
+| Aspecto | Ubicación | Responsabilidad |
+|---|---|---|
+| `LogExecution` | `src/common/decorators/aspect.decorators.ts` | Registra invocación, argumentos y resultado (advices *before* y *after returning*) |
+| `MeasurePerformance` | `src/common/decorators/aspect.decorators.ts` | Mide tiempo de ejecución y alerta al superar el umbral (advice *around*) |
+| `HandleErrors` | `src/common/decorators/aspect.decorators.ts` | Captura, registra y repropaga excepciones (advice *after throwing*) |
+| `Audit` | `src/common/decorators/aspect.decorators.ts` | Deja traza de auditoría de toda operación que muta estado |
+| `GraphQLLoggingInterceptor` | `src/common/aspects/logging.aspect.ts` | Aspecto global sobre todas las operaciones GraphQL |
 
-## Compile and run the project
+`TasksService` no contiene una sola línea de logging, medición ni manejo de errores: esos comportamientos se tejen mediante decoradores, cumpliendo la separación de incumbencias.
 
-```bash
-# development
-$ npm run start
+### Clean Code
 
-# watch mode
-$ npm run start:dev
+- Separación por capas: resolver (transporte) → servicio (negocio) → entidad (dominio)
+- Funciones cortas con responsabilidad única
+- Nombres descriptivos en español para el dominio, inglés para la infraestructura
+- DTOs con validación declarativa vía `class-validator`
+- Sin números mágicos ni código duplicado
 
-# production mode
-$ npm run start:prod
-```
+### Logging
 
-## Run tests
+Winston con tres transportes: consola coloreada para desarrollo, `logs/error.log` para errores y `logs/combined.log` para el histórico completo. Rotación automática a los 5 MB.
 
-```bash
-# unit tests
-$ npm run test
+### GitFlow
 
-# e2e tests
-$ npm run test:e2e
+Ramas `main`, `develop`, `feature/*` y `release/*`, con merges `--no-ff` para preservar la trazabilidad del historial.
 
-# test coverage
-$ npm run test:cov
-```
+## Modelo de datos
 
-## Deployment
+| Campo | Tipo | Descripción |
+|---|---|---|
+| `id` | `ID` | Identificador único (UUID v4) |
+| `title` | `String` | Título de la tarea |
+| `description` | `String` | Descripción detallada |
+| `status` | `TaskStatus` | `BACKLOG`, `TODO`, `IN_PROGRESS`, `DONE` |
+| `tags` | `[String]` | Arreglo dinámico de etiquetas |
+| `createdAt` | `Date` | Fecha de creación |
+| `updatedAt` | `Date` | Fecha de última modificación |
+| `assignedUser` | `String` | Usuario responsable |
+| `project` | `String` | Proyecto al que pertenece |
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+## Instalación
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+npm install
+cp .env.example .env
+npm run start:dev
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+Playground disponible en http://localhost:3000/graphql
 
-## Resources
+## Operaciones
 
-Check out a few resources that may come in handy when working with NestJS:
+### Queries
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+```graphql
+query { tasks { id title status assignedUser project } }
 
-## Support
+query { tasks(filter: { status: IN_PROGRESS, project: "task-manager" }) { id title } }
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+query { task(id: "uuid") { id title description tags } }
+```
 
-## Stay in touch
+### Mutations
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+```graphql
+mutation {
+  createTask(input: {
+    title: "Implementar autenticación JWT"
+    description: "Agregar guard y estrategia Passport"
+    tags: ["backend", "seguridad"]
+    assignedUser: "aconrado"
+    project: "task-manager"
+  }) { id title status createdAt }
+}
 
-## License
+mutation { updateTask(input: { id: "uuid", title: "Nuevo título" }) { id title } }
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+mutation { changeTaskStatus(id: "uuid", status: IN_PROGRESS) { id status } }
+
+mutation { addTaskTags(id: "uuid", tags: ["urgente"]) { id tags } }
+
+mutation { removeTaskTags(id: "uuid", tags: ["backend"]) { id tags } }
+
+mutation { assignTaskUser(id: "uuid", assignedUser: "otrousuario") { id assignedUser } }
+
+mutation { removeTask(id: "uuid") }
+```
+
+## Stack
+
+NestJS · GraphQL (Apollo, code-first) · TypeScript · Winston · class-validator
