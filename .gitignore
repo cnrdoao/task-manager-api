@@ -56,3 +56,6 @@ pids
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
 !.env.example
+
+# GraphQL generated schema
+src/schema.gql
