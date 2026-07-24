@@ -45,13 +45,23 @@ export function LogExecution(context?: string): MethodDecorator {
     const originalMethod = descriptor.value;
     const scope = context ?? target.constructor.name;
 
-    descriptor.value = async function (...args: unknown[]) {
+    descriptor.value = function (...args: unknown[]) {
       aspectLogger.log(
         `→ ${String(propertyKey)}() invocado | args: ${safeStringify(args)}`,
         scope,
       );
 
-      const result = await originalMethod.apply(this, args);
+      const result = originalMethod.apply(this, args);
+
+      if (result instanceof Promise) {
+        return result.then((resolved: unknown) => {
+          aspectLogger.log(
+            `← ${String(propertyKey)}() finalizado | result: ${safeStringify(resolved)}`,
+            scope,
+          );
+          return resolved;
+        });
+      }
 
       aspectLogger.log(
         `← ${String(propertyKey)}() finalizado | result: ${safeStringify(result)}`,
@@ -82,12 +92,15 @@ export function MeasurePerformance(thresholdMs = 200): MethodDecorator {
     const originalMethod = descriptor.value;
     const scope = target.constructor.name;
 
-    descriptor.value = async function (...args: unknown[]) {
+    descriptor.value = function (...args: unknown[]) {
       const start = process.hrtime.bigint();
-      try {
-        return await originalMethod.apply(this, args);
-      } finally {
-        const elapsedMs = Number(process.hrtime.bigint() - start) / 1_000_000;
+
+      /**
+       * Emite la métrica de duración una vez concluida la ejecución.
+       * @param {bigint} startedAt - Marca de inicio en nanosegundos.
+       */
+      const report = (startedAt: bigint): void => {
+        const elapsedMs = Number(process.hrtime.bigint() - startedAt) / 1_000_000;
         const message = `⏱ ${String(propertyKey)}() ejecutado en ${elapsedMs.toFixed(2)}ms`;
 
         if (elapsedMs > thresholdMs) {
@@ -95,9 +108,22 @@ export function MeasurePerformance(thresholdMs = 200): MethodDecorator {
         } else {
           aspectLogger.debug(message, scope);
         }
+      };
+
+      try {
+        const result = originalMethod.apply(this, args);
+
+        if (result instanceof Promise) {
+          return result.finally(() => report(start));
+        }
+
+        report(start);
+        return result;
+      } catch (error) {
+        report(start);
+        throw error;
       }
     };
-
     return descriptor;
   };
 }
@@ -118,16 +144,33 @@ export function HandleErrors(): MethodDecorator {
     const originalMethod = descriptor.value;
     const scope = target.constructor.name;
 
-    descriptor.value = async function (...args: unknown[]) {
-      try {
-        return await originalMethod.apply(this, args);
-      } catch (error) {
+    descriptor.value = function (...args: unknown[]) {
+      /**
+       * Registra la excepción capturada con su traza.
+       * @param {unknown} error - Excepción interceptada.
+       */
+      const logError = (error: unknown): void => {
         const err = error as Error;
         aspectLogger.error(
           `✖ Error en ${String(propertyKey)}(): ${err.message} | args: ${safeStringify(args)}`,
           err.stack,
           scope,
         );
+      };
+
+      try {
+        const result = originalMethod.apply(this, args);
+
+        if (result instanceof Promise) {
+          return result.catch((error: unknown) => {
+            logError(error);
+            throw error;
+          });
+        }
+
+        return result;
+      } catch (error) {
+        logError(error);
         throw error;
       }
     };
@@ -153,16 +196,26 @@ export function Audit(action: string): MethodDecorator {
     const originalMethod = descriptor.value;
     const auditLogger = new Logger('AuditTrail');
 
-    descriptor.value = async function (...args: unknown[]) {
-      const result = await originalMethod.apply(this, args);
+    descriptor.value = function (...args: unknown[]) {
+      const result = originalMethod.apply(this, args);
 
-      auditLogger.log(
-        `[${action}] ${new Date().toISOString()} | payload: ${safeStringify(args)}`,
-      );
+      /** Registra la traza de auditoría de la operación. */
+      const trace = (): void => {
+        auditLogger.log(
+          `[${action}] ${new Date().toISOString()} | payload: ${safeStringify(args)}`,
+        );
+      };
 
+      if (result instanceof Promise) {
+        return result.then((resolved: unknown) => {
+          trace();
+          return resolved;
+        });
+      }
+
+      trace();
       return result;
     };
-
     return descriptor;
   };
 }

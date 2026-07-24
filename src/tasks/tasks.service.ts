@@ -132,9 +132,13 @@ export class TasksService {
     const { id, ...changes } = input;
     const existing = this.findOne(id);
 
+    const definedChanges = Object.fromEntries(
+      Object.entries(changes).filter(([, value]) => value !== undefined),
+    );
+
     const updated: Task = {
       ...existing,
-      ...changes,
+      ...definedChanges,
       updatedAt: new Date(),
     };
 
